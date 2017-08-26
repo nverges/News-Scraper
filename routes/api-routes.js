@@ -1,18 +1,36 @@
+//scraping tools
+var request = require("request");
+var cheerio = require("cheerio");
+var methodOverride = require("method-override");
+var Article = require('../models/Article')
+var Note = require('../models/Note')
+
 
 // Routes
 // ======
-var db = require("../models");
+module.exports = function(router) {
 
-module.exports = function(app) {
+    // Default GET method
+    router.get("/", function(req, res){
+      Article.find({
+        saved: false
+      }, function(err, doc) {
+      if (err) {
+        res.send(err);
+      } else {
+        res.render("index", {article: doc} );
+      }
+    });
+  });
 
-  // A GET request to scrape the echojs website
-  app.get("/scrape", function(req, res) {
+  // A GET request to scrape Reddit's front page
+  router.get("/scrape", function(req, res) {
     // First, we grab the body of the html with request
-    request("http://www.echojs.com/", function(error, response, html) {
+    request("http://reddit.com/", function(error, response, html) {
       // Then, we load that into cheerio and save it to $ for a shorthand selector
       var $ = cheerio.load(html);
       // Now, we grab every h2 within an article tag, and do the following:
-      $("article h2").each(function(i, element) {
+      $("p.title").each(function(i, element) {
 
         // Save an empty result object
         var result = {};
@@ -40,11 +58,13 @@ module.exports = function(app) {
       });
     });
     // Tell the browser that we finished scraping the text
-    res.send("Scrape Complete");
+  //   res.send("Scrape Complete");
+      console.log('20 Articles Scraped!');
+      res.redirect('/');
   });
 
   // This will get the articles we scraped from the mongoDB
-  app.get("/articles", function(req, res) {
+  router.get("/articles", function(req, res) {
     // Grab every doc in the Articles array
     Article.find({}, function(error, doc) {
       // Log any errors
@@ -59,7 +79,7 @@ module.exports = function(app) {
   });
 
   // Grab an article by it's ObjectId
-  app.get("/articles/:id", function(req, res) {
+  router.get("/articles/:id", function(req, res) {
     // Using the id passed in the id parameter, prepare a query that finds the matching one in our db...
     Article.findOne({ "_id": req.params.id })
     // ..and populate all of the notes associated with it
@@ -79,7 +99,7 @@ module.exports = function(app) {
 
 
   // Create a new note or replace an existing note
-  app.post("/articles/:id", function(req, res) {
+  router.post("/articles/:id", function(req, res) {
     // Create a new note and pass the req.body to the entry
     var newNote = new Note(req.body);
 
